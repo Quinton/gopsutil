@@ -120,6 +120,60 @@ func UsersWithContext(ctx context.Context) ([]UserStat, error) {
 
 }
 
+func GetLSB() (*LSB, error) {
+	ret := &LSB{}
+	if common.PathExists(common.HostEtc("lsb-release")) {
+		contents, err := common.ReadLines(common.HostEtc("lsb-release"))
+		if err != nil {
+			return ret, err // return empty
+		}
+		for _, line := range contents {
+			field := strings.Split(line, "=")
+			if len(field) < 2 {
+				continue
+			}
+			switch field[0] {
+			case "DISTRIB_ID":
+				ret.ID = field[1]
+			case "DISTRIB_RELEASE":
+				ret.Release = field[1]
+			case "DISTRIB_CODENAME":
+				ret.Codename = field[1]
+			case "DISTRIB_DESCRIPTION":
+				ret.Description = field[1]
+			}
+		}
+	} else if common.PathExists("/usr/bin/lsb_release") {
+		lsb_release, err := exec.LookPath("lsb_release")
+		if err != nil {
+			return ret, err
+		}
+		out, err := invoke.Command(lsb_release)
+		if err != nil {
+			return ret, err
+		}
+		for _, line := range strings.Split(string(out), "\n") {
+			field := strings.Split(line, ":")
+			if len(field) < 2 {
+				continue
+			}
+			switch field[0] {
+			case "Distributor ID":
+				ret.ID = field[1]
+			case "Release":
+				ret.Release = field[1]
+			case "Codename":
+				ret.Codename = field[1]
+			case "Description":
+				ret.Description = field[1]
+			}
+		}
+
+	}
+
+	return ret, nil
+}
+
 func getLSB() (*LSB, error) {
 	ret := &LSB{}
 	if common.PathExists(common.HostEtc("lsb-release")) {
